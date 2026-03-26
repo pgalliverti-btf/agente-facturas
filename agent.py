@@ -2,6 +2,8 @@ import os
 import base64
 import gspread
 import hashlib
+import json
+
 from datetime import datetime
 from anthropic import Anthropic
 from dotenv import load_dotenv
@@ -14,12 +16,22 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 def conectar_sheets():
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    creds = Credentials.from_service_account_file("credentials/google.json", scopes=scopes)
+    
+    google_creds = os.getenv("GOOGLE_CREDENTIALS")
+    if google_creds:
+        # En producción (Render) — lee desde variable de entorno
+        creds_dict = json.loads(google_creds)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        # En local — lee desde archivo
+        creds = Credentials.from_service_account_file("credentials/google.json", scopes=scopes)
+    
     sheets_client = gspread.authorize(creds)
     return sheets_client.open("facturas-agente").sheet1
 
