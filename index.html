@@ -91,7 +91,7 @@
         formData.append("factura", archivoSeleccionado);
 
         try {
-            const res = await fetch("http://localhost:5001/subir", { method: "POST", body: formData });
+            const res = await fetch("https://agente-facturas-imcl.onrender.com/subir", { method: "POST", body: formData });
             const data = await res.json();
             spinner.style.display = "none";
 
