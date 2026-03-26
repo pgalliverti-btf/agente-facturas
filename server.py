@@ -8,25 +8,15 @@ import tempfile
 load_dotenv()
 app = Flask(__name__)
 CORS(app)
-
 @app.route("/subir", methods=["POST"])
 def subir():
-    if "factura" not in request.files:
-        return jsonify({"error": "No se recibió archivo"}), 400
-    
-    archivo = request.files["factura"]
-    extension = archivo.filename.split(".")[-1].lower()
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{extension}") as tmp:
-        archivo.save(tmp.name)
-        resultado = procesar_factura(tmp.name)
-        os.unlink(tmp.name)
-    
+    # ... todo el código de subir
     if resultado:
         return jsonify({"ok": True, "datos": resultado})
     else:
         return jsonify({"ok": False, "mensaje": "Duplicado o requiere revisión manual"})
-    @app.route("/")
+
+@app.route("/")
 def index():
     return open("index.html").read()
 
