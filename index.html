@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agente Facturas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 480px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        p.sub { color: #888; font-size: 14px; margin-bottom: 32px; }
+        .drop-zone { border: 2px dashed #ddd; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .drop-zone:hover, .drop-zone.dragover { border-color: #4F46E5; background: #f5f3ff; }
+        .drop-zone input { display: none; }
+        .drop-zone .icon { font-size: 36px; margin-bottom: 12px; }
+        .drop-zone p { color: #888; font-size: 14px; }
+        .drop-zone strong { color: #4F46E5; }
+        button { width: 100%; margin-top: 20px; padding: 14px; background: #4F46E5; color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #4338CA; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .resultado { margin-top: 24px; padding: 20px; border-radius: 10px; font-size: 14px; display: none; }
+        .resultado.ok { background: #f0fdf4; border: 1px solid #86efac; }
+        .resultado.error { background: #fef2f2; border: 1px solid #fca5a5; }
+        .resultado .label { font-weight: 600; margin-bottom: 8px; }
+        .resultado .fila { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .preview { margin-top: 16px; text-align: center; display: none; }
+        .preview img { max-height: 120px; border-radius: 8px; border: 1px solid #eee; }
+        .spinner { display: none; margin: 16px auto; width: 32px; height: 32px; border: 3px solid #eee; border-top-color: #4F46E5; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>📄 Agente de Facturas</h1>
+    <p class="sub">Subí una factura para extraer fecha y monto automáticamente.</p>
+
+    <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf">
+        <div class="icon">📎</div>
+        <p><strong>Elegí un archivo</strong> o arrastralo acá</p>
+        <p>JPG, PNG</p>
+    </div>
+
+    <div class="preview" id="preview">
+        <img id="previewImg" src="" alt="preview">
+    </div>
+
+    <div class="spinner" id="spinner"></div>
+
+    <button id="btn" disabled>Procesar factura</button>
+
+    <div class="resultado" id="resultado"></div>
+</div>
+
+<script>
+    const dropZone = document.getElementById("dropZone");
+    const fileInput = document.getElementById("fileInput");
+    const btn = document.getElementById("btn");
+    const resultado = document.getElementById("resultado");
+    const spinner = document.getElementById("spinner");
+    const preview = document.getElementById("preview");
+    const previewImg = document.getElementById("previewImg");
+    let archivoSeleccionado = null;
+
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", e => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        if (e.dataTransfer.files[0]) seleccionarArchivo(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", () => { if (fileInput.files[0]) seleccionarArchivo(fileInput.files[0]); });
+
+    function seleccionarArchivo(file) {
+        archivoSeleccionado = file;
+        btn.disabled = false;
+        preview.style.display = "block";
+        previewImg.src = URL.createObjectURL(file);
+        resultado.style.display = "none";
+    }
+
+    btn.addEventListener("click", async () => {
+        if (!archivoSeleccionado) return;
+        btn.disabled = true;
+        spinner.style.display = "block";
+        resultado.style.display = "none";
+
+        const formData = new FormData();
+        formData.append("factura", archivoSeleccionado);
+
+        try {
+            const res = await fetch("http://localhost:5001/subir", { method: "POST", body: formData });
+            const data = await res.json();
+            spinner.style.display = "none";
+
+            if (data.ok) {
+                resultado.className = "resultado ok";
+                resultado.innerHTML = `
+                    <div class="label">✅ Factura procesada</div>
+                    <div class="fila"><span>Fecha</span><span>${data.datos.fecha}</span></div>
+                    <div class="fila"><span>Monto</span><span>$${Number(data.datos.monto_total).toLocaleString("es-AR")}</span></div>
+                    <div class="fila"><span>Confianza</span><span>${data.datos.confianza}</span></div>
+                `;
+            } else {
+                resultado.className = "resultado error";
+                resultado.innerHTML = `<div class="label">⚠️ ${data.mensaje}</div>`;
+            }
+            resultado.style.display = "block";
+        } catch (e) {
+            spinner.style.display = "none";
+            resultado.className = "resultado error";
+            resultado.innerHTML = `<div class="label">❌ Error al conectar con el servidor</div>`;
+            resultado.style.display = "block";
+        }
+        btn.disabled = false;
+    });
+</script>
+</body>
+</html>
